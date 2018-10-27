@@ -29,6 +29,8 @@ export default class ImageResize extends React.Component {
   static defaultProps = {
     canvasRef: null,
     loadedImage: null,
+    onZoomUpdated: () => {},
+    onOffsetUpdated: () => {},
   };
 
   // We stare these as instance properties rather than on state because we
@@ -53,55 +55,30 @@ export default class ImageResize extends React.Component {
     this.imgXOffset = xOffset;
     this.imgYOffset = yOffset;
     this.zoomLevel = zoomLevel;
+    this.props.onZoomUpdated(zoomLevel);
+    this.props.onOffsetUpdated({ xOffset, yOffset });
     this.updateCanvas();
     // Need to force an update to get the default zoomLevel set on the slider
     this.forceUpdate();
 
-    canvas.addEventListener('mousedown', e => {
-      this.isDragging = true;
-      this.dragX = e.offsetX;
-      this.dragY = e.offsetY;
-    });
-    canvas.addEventListener('mouseup', e => {
-      this.isDragging = false;
-    });
-    canvas.addEventListener('mouseleave', e => {
-      this.isDragging = false;
-    });
+    canvas.addEventListener('mousedown', this.startDrag);
+    canvas.addEventListener('mousemove', this.updateDrag);
+    canvas.addEventListener('mouseup', this.endDrag);
+    canvas.addEventListener('mouseleave', this.endDrag);
+    canvas.addEventListener('touchstart', this.startDrag);
+    canvas.addEventListener('touchend', this.endDrag);
+    canvas.addEventListener('touchmove', this.updateDrag);
+  }
 
-    canvas.addEventListener('mousemove', e => {
-      if (this.isDragging) {
-        const newX = e.offsetX;
-        const newY = e.offsetY;
-        this.imgXOffset -= this.dragX - newX;
-        this.imgYOffset -= this.dragY - newY;
-        this.dragX = newX;
-        this.dragY = newY;
-        this.updateCanvas();
-      }
-    });
-    canvas.addEventListener('touchstart', e => {
-      e.preventDefault();
-      this.isDragging = true;
-      this.dragX = e.touches[0].clientX;
-      this.dragY = e.touches[0].clientY;
-    });
-    canvas.addEventListener('touchend', e => {
-      e.preventDefault();
-      this.isDragging = false;
-    });
-    canvas.addEventListener('touchmove', e => {
-      if (this.isDragging) {
-        const newX = e.touches[0].clientX;
-        const newY = e.touches[0].clientY;
-
-        this.imgXOffset -= this.dragX - newX;
-        this.imgYOffset -= this.dragY - newY;
-        this.dragX = newX;
-        this.dragY = newY;
-        this.updateCanvas();
-      }
-    });
+  componentWillUnmount() {
+    const canvas = this.props.canvasRef.current;
+    canvas.removeEventListener('mousedown', this.startDrag);
+    canvas.removeEventListener('mousemove', this.updateDrag);
+    canvas.removeEventListener('mouseup', this.endDrag);
+    canvas.removeEventListener('mouseleave', this.endDrag);
+    canvas.removeEventListener('touchstart', this.startDrag);
+    canvas.removeEventListener('touchend', this.endDrag);
+    canvas.removeEventListener('touchmove', this.updateDrag);
   }
 
   updateCanvas = () => {
@@ -124,9 +101,51 @@ export default class ImageResize extends React.Component {
     );
   };
 
+  startDrag = e => {
+    this.isDragging = true;
+
+    if (e.touches) {
+      e.preventDefault();
+      this.dragX = e.touches[0].clientX;
+      this.dragY = e.touches[0].clientY;
+    } else {
+      this.dragX = e.offsetX;
+      this.dragY = e.offsetY;
+    }
+  };
+
+  updateDrag = e => {
+    if (this.isDragging) {
+      let newX = e.offsetX;
+      let newY = e.offsetY;
+      if (e.touched) {
+        newX = e.touches[0].clientX;
+        newY = e.touches[0].clientY;
+      }
+
+      this.imgXOffset -= this.dragX - newX;
+      this.imgYOffset -= this.dragY - newY;
+      this.dragX = newX;
+      this.dragY = newY;
+      this.props.onOffsetUpdated({
+        xOffset: this.imgXOffset,
+        yOffset: this.imgYOffset,
+      });
+      this.updateCanvas();
+    }
+  };
+
+  endDrag = e => {
+    if (e.touches) {
+      e.preventDefault();
+    }
+    this.isDragging = false;
+  };
+
   onZoomChange = e => {
     const newValue = e.target.value;
     this.zoomLevel = newValue;
+    this.props.onZoomUpdated(newValue);
     this.updateCanvas();
   };
 
