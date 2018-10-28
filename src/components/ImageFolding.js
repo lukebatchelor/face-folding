@@ -57,7 +57,8 @@ export default class ImageFolding extends React.Component {
       0,
       0,
       imgWidth,
-      imgHeight / 2 - this.topOffset - verticalCenteringOffset
+      // Need to round this up because on mobile, we're getting a rounded offsetTop >:(
+      Math.ceil(imgHeight / 2 - this.topOffset - verticalCenteringOffset)
     );
     // Now the bottom
     const ySrcOffset =
@@ -87,7 +88,7 @@ export default class ImageFolding extends React.Component {
 
     if (e.touches) {
       e.preventDefault();
-      startY = e.touches[0].clientY;
+      startY = e.touches[0].clientY - e.touches[0].target.offsetTop;
     }
     this.draggingTop = startY < canvas.height / 2;
     this.dragY = startY;
@@ -96,8 +97,8 @@ export default class ImageFolding extends React.Component {
   updateDrag = e => {
     if (this.isDragging) {
       let newY = e.offsetY;
-      if (e.touched) {
-        newY = e.touches[0].clientY;
+      if (e.touches) {
+        newY = e.touches[0].clientY - e.touches[0].target.offsetTop;
       }
       if (this.draggingTop) {
         this.topOffset -= this.dragY - newY;

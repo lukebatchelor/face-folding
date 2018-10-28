@@ -118,7 +118,7 @@ export default class ImageResize extends React.Component {
     if (this.isDragging) {
       let newX = e.offsetX;
       let newY = e.offsetY;
-      if (e.touched) {
+      if (e.touches) {
         newX = e.touches[0].clientX;
         newY = e.touches[0].clientY;
       }
