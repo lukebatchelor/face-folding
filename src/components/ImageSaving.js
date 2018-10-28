@@ -15,113 +15,60 @@ const buttonStyles = {
 export default class ImageSaving extends React.Component {
   static defaultProps = {
     canvasRef: null,
-    resizedImageData: null,
+    onFinalCanvasHeightCalculated: () => {},
   };
+  anchorRef = React.createRef();
 
-  // We stare these as instance properties rather than on state because we
-  // don't need React to re-render at all, all redering is done by us on the canvas
-  isDragging = false;
-  draggingTop = false; // we're either moving the top or the bottom half
-  topOffset = 0;
-  bottomOffset = 0;
-  dragX = 0;
-  dragY = 0;
-
-  componentDidMount() {
-    this.updateCanvas();
+  onDownload = () => {
     const canvas = this.props.canvasRef.current;
-
-    canvas.addEventListener('mousedown', this.startDrag);
-    canvas.addEventListener('mousemove', this.updateDrag);
-    canvas.addEventListener('mouseup', this.endDrag);
-    canvas.addEventListener('mouseleave', this.endDrag);
-    canvas.addEventListener('touchstart', this.startDrag);
-    canvas.addEventListener('touchend', this.endDrag);
-    canvas.addEventListener('touchmove', this.updateDrag);
-  }
-
-  updateCanvas = () => {
-    if (!this.props.canvasRef) return;
-    const { resizedImageData, canvasRef } = this.props;
-    const ctx = canvasRef.current.getContext('2d');
-    const { height: imgHeight, width: imgWidth } = resizedImageData;
-    const { height: canvasHeight, width: canvasWidth } = canvasRef.current;
-    const verticalCenteringOffset = (canvasHeight - imgHeight) / 2;
-
-    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-
-    // Now we need to draw the image in two halves, top and bottom, being careful to
-    // // cut them off in the middle. Start with the top:
-    ctx.putImageData(
-      resizedImageData,
+    const ctx = canvas.getContext('2d');
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    // Now we need to find how many pixels from the top and bottom are transparent
+    // so we can resize the canvas
+    let topTransparent, bottomTransparent;
+    // Pixels are just a giant array or RGBA values, all in a row, we can move pixel by pixel by moving 4 values along
+    // But we want to move down a column, so we need to move 4 * number of pixels in a row
+    for (let i = 0; i < canvas.height; i += 1) {
+      if (pixels[i * (canvas.width * 4) + 3] !== 0) {
+        topTransparent = i;
+        break;
+      }
+    }
+    // Now do the same starting from the last pixel
+    for (let i = canvas.height; i > 0; i -= 1) {
+      if (pixels[i * (canvas.width * 4) + 3] !== 0) {
+        bottomTransparent = i;
+      }
+    }
+    const trimmedImageData = ctx.getImageData(
       0,
-      this.topOffset + verticalCenteringOffset * 2,
-      0,
-      0,
-      imgWidth,
-      // Need to round this up because on mobile, we're getting a rounded offsetTop >:(
-      Math.ceil(imgHeight / 2 - this.topOffset - verticalCenteringOffset)
-    );
-    // Now the bottom
-    const ySrcOffset =
-      imgHeight / 2 + this.bottomOffset - verticalCenteringOffset;
-    ctx.putImageData(
-      resizedImageData,
-      0,
-      canvasHeight / 2 - ySrcOffset,
-      0,
-      ySrcOffset,
-      imgWidth,
-      imgHeight
+      topTransparent,
+      canvas.width,
+      canvas.height - topTransparent - bottomTransparent
     );
 
-    // Draw dividing line
-    // ctx.beginPath();
-    // ctx.moveTo(0, canvasHeight / 2);
-    // ctx.lineTo(canvasWidth, canvasHeight / 2);
-    // ctx.strokeStyle = '#ff0000';
-    // ctx.stroke();
-  };
-
-  startDrag = e => {
-    this.isDragging = true;
-    const canvas = this.props.canvasRef.current;
-    let startY = e.offsetY;
-
-    if (e.touches) {
-      e.preventDefault();
-      startY = e.touches[0].clientY - e.touches[0].target.offsetTop;
-    }
-    this.draggingTop = startY < canvas.height / 2;
-    this.dragY = startY;
-  };
-
-  updateDrag = e => {
-    if (this.isDragging) {
-      let newY = e.offsetY;
-      if (e.touches) {
-        // Note: offsetTop is rounded here, so we need to  take it into consideration later
-        newY = e.touches[0].clientY - e.touches[0].target.offsetTop;
-      }
-      if (this.draggingTop) {
-        this.topOffset -= this.dragY - newY;
-      } else {
-        this.bottomOffset += this.dragY - newY;
-      }
-
-      this.dragY = newY;
-      this.updateCanvas();
-    }
-  };
-
-  endDrag = e => {
-    if (e.touches) {
-      e.preventDefault();
-    }
-    this.isDragging = false;
+    const newCanvas = document.createElement('canvas');
+    newCanvas.width = canvas.width;
+    newCanvas.height = canvas.height - topTransparent - bottomTransparent;
+    const newCtx = newCanvas.getContext('2d');
+    newCtx.putImageData(trimmedImageData, 0, 0);
+    const downloadableDataURL = newCanvas
+      .toDataURL()
+      .replace('image/png', 'image/octet-stream');
+    const anchor = this.anchorRef.current;
+    anchor.href = downloadableDataURL;
+    anchor.download = 'facefold.png';
+    anchor.click();
   };
 
   render() {
-    return <></>;
+    return (
+      <>
+        <a ref={this.anchorRef} />
+        <button style={buttonStyles} onClick={this.onDownload}>
+          Download
+        </button>
+      </>
+    );
   }
 }

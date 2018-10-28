@@ -3,6 +3,7 @@ import React from 'react';
 import ImageUpload from './ImageUpload';
 import ImageResize from './ImageResize';
 import ImageFolding from './ImageFolding';
+import ImageSaving from './ImageSaving';
 
 const buttonStyles = enabled => ({
   border: '2px solid gray',
@@ -15,6 +16,15 @@ const buttonStyles = enabled => ({
   outline: 'none',
   userSelect: 'none',
   visibility: enabled ? 'visible' : 'hidden',
+});
+
+const canvasStyles = curState => ({
+  maxWidth: '380px',
+  margin: '10px',
+  resize: 'both',
+  overflow: 'hidden',
+  border: curState !== 'IMAGE_SAVING' ? '1px solid grey' : 0,
+  borderRadius: curState !== 'IMAGE_SAVING' ? '6px' : 0,
 });
 
 export default class App extends React.Component {
@@ -86,24 +96,9 @@ export default class App extends React.Component {
       });
     }
     if (this.state.curState === 'IMAGE_FOLDING') {
-      const canvas = this.canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      const { height: imgHeight, width: imgWidth } = this.state.loadedImage;
-      const { height: canvasHeight, width: canvasWidth } = canvas;
-      const newImgHeight = imgHeight * this.zoomLevel;
-      const newImgWidth = imgWidth * this.zoomLevel;
-
-      // Now we only want to get the image data for the parts of the image that
-      // are visible in the canvas, so we clamp our values to those edges
-      const resizedImageData = ctx.getImageData(
-        Math.max(this.xOffset, 0),
-        Math.max(this.yOffset, 0),
-        Math.min(newImgWidth + this.xOffset, canvasWidth),
-        Math.min(newImgHeight + this.yOffset, canvasHeight)
-      );
       this.setState({
         curState: 'IMAGE_SAVING',
-        backEnabled: true,
+        backEnabled: false,
         nextEnabled: false,
       });
     }
@@ -148,14 +143,7 @@ export default class App extends React.Component {
           <p>That's it! Right click or long press to save your image!</p>
         )}
         <canvas
-          style={{
-            border: '1px solid grey',
-            maxWidth: '380px',
-            margin: '10px',
-            resize: 'both',
-            overflow: 'hidden',
-            borderRadius: '6px',
-          }}
+          style={canvasStyles(this.state.curState)}
           height="300"
           ref={this.canvasRef}
         />
@@ -192,6 +180,9 @@ export default class App extends React.Component {
               onTopOffsetUpdated={this.onTopOffsetUpdated}
               onBottomOffsetUpdated={this.onBottomOffsetUpdated}
             />
+          )}
+          {this.state.curState === 'IMAGE_SAVING' && (
+            <ImageSaving canvasRef={this.canvasRef} />
           )}
         </div>
         <div
