@@ -8,6 +8,8 @@ const buttonStyles = {
   borderRadius: '8px',
   fontSize: '20px',
   fontWeight: 'bold',
+  outline: 'none',
+  userSelect: 'none',
 };
 
 export default class ImageUpload extends React.Component {
@@ -16,15 +18,16 @@ export default class ImageUpload extends React.Component {
     loadedImage: null,
     onFileLoaded: () => {},
   };
+  fileInputRef = React.createRef();
 
   onFileChange = e => {
     const files = e.target.files;
     if (files.length !== 1) {
-      console.error('Expected exactly 1 file');
+      alert('Error: Expected exactly 1 file');
       return;
     }
     if (!files[0].type.startsWith('image/')) {
-      console.error('Expected an image');
+      alert('Error: Expected an image file');
       return;
     }
     const image = files[0];
@@ -63,7 +66,10 @@ export default class ImageUpload extends React.Component {
     }
   }
 
-  updateCanvas = () => {};
+  uploadClicked = () => {
+    // We'll use the button click to trigger a click on the hidden file input field
+    this.fileInputRef.current.click();
+  };
 
   render() {
     return (
@@ -74,19 +80,17 @@ export default class ImageUpload extends React.Component {
           display: 'inline-block',
         }}
       >
-        <button style={{ ...buttonStyles, margin: '0 10px' }}>
+        <button
+          style={{ ...buttonStyles, margin: '0 10px' }}
+          onClick={this.uploadClicked}
+        >
           Upload a file
         </button>
         <input
           type="file"
           id="imageFile"
-          style={{
-            fontSize: '100px',
-            position: 'absolute',
-            left: 0,
-            top: 0,
-            opacity: 0,
-          }}
+          style={{ display: 'none' }}
+          ref={this.fileInputRef}
           onChange={this.onFileChange}
         />
       </div>

@@ -105,7 +105,6 @@ export default class ImageResize extends React.Component {
     this.isDragging = true;
 
     if (e.touches) {
-      e.preventDefault();
       this.dragX = e.touches[0].clientX;
       this.dragY = e.touches[0].clientY;
     } else {
@@ -136,9 +135,6 @@ export default class ImageResize extends React.Component {
   };
 
   endDrag = e => {
-    if (e.touches) {
-      e.preventDefault();
-    }
     this.isDragging = false;
   };
 

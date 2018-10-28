@@ -4,7 +4,7 @@ import ImageUpload from './ImageUpload';
 import ImageResize from './ImageResize';
 import ImageFolding from './ImageFolding';
 
-const buttonStyles = {
+const buttonStyles = enabled => ({
   border: '2px solid gray',
   color: 'gray',
   backgroundColor: 'white',
@@ -12,33 +12,56 @@ const buttonStyles = {
   borderRadius: '8px',
   fontSize: '20px',
   fontWeight: 'bold',
-};
+  outline: 'none',
+  userSelect: 'none',
+  visibility: enabled ? 'visible' : 'hidden',
+});
 
 export default class App extends React.Component {
   state = {
-    backEnabled: true,
-    nextEnabled: true,
+    backEnabled: false,
+    nextEnabled: false,
     loadedImage: null,
     resizedImageData: null,
+    foldedImageData: null,
     curState: 'IMAGE_UPLOAD',
   };
   canvasRef = React.createRef();
+  // values from the resizing and centering step
   xOffset = 0;
   yOffset = 0;
   zoomLevel = 1;
+  // values from the folding step
+  topOffset = 0;
+  bottomOffset = 0;
 
-  onBackClick = () => {
+  onBackClick = e => {
     if (this.state.curState === 'IMAGE_RESIZE') {
-      this.setState({ curState: 'IMAGE_UPLOAD' });
+      this.setState({
+        curState: 'IMAGE_UPLOAD',
+        backEnabled: false,
+        nextEnabled: !!this.state.loadedImage,
+      });
     }
     if (this.state.curState === 'IMAGE_FOLDING') {
-      this.setState({ curState: 'IMAGE_RESIZE' });
+      this.setState({
+        curState: 'IMAGE_RESIZE',
+        backEnabled: true,
+        nextEnabled: true,
+      });
+    }
+    if (this.state.curState === 'IMAGE_SAVING') {
+      this.setState({
+        curState: 'IMAGE_FOLDING',
+        backEnabled: true,
+        nextEnabled: true,
+      });
     }
   };
 
-  onNextClick = () => {
+  onNextClick = e => {
     if (this.state.curState === 'IMAGE_UPLOAD') {
-      this.setState({ curState: 'IMAGE_RESIZE' });
+      this.setState({ curState: 'IMAGE_RESIZE', backEnabled: true });
     }
     if (this.state.curState === 'IMAGE_RESIZE') {
       const canvas = this.canvasRef.current;
@@ -56,7 +79,33 @@ export default class App extends React.Component {
         Math.min(newImgWidth + this.xOffset, canvasWidth),
         Math.min(newImgHeight + this.yOffset, canvasHeight)
       );
-      this.setState({ curState: 'IMAGE_FOLDING', resizedImageData });
+      this.setState({
+        curState: 'IMAGE_FOLDING',
+        resizedImageData,
+        backEnabled: true,
+      });
+    }
+    if (this.state.curState === 'IMAGE_FOLDING') {
+      const canvas = this.canvasRef.current;
+      const ctx = canvas.getContext('2d');
+      const { height: imgHeight, width: imgWidth } = this.state.loadedImage;
+      const { height: canvasHeight, width: canvasWidth } = canvas;
+      const newImgHeight = imgHeight * this.zoomLevel;
+      const newImgWidth = imgWidth * this.zoomLevel;
+
+      // Now we only want to get the image data for the parts of the image that
+      // are visible in the canvas, so we clamp our values to those edges
+      const resizedImageData = ctx.getImageData(
+        Math.max(this.xOffset, 0),
+        Math.max(this.yOffset, 0),
+        Math.min(newImgWidth + this.xOffset, canvasWidth),
+        Math.min(newImgHeight + this.yOffset, canvasHeight)
+      );
+      this.setState({
+        curState: 'IMAGE_SAVING',
+        backEnabled: true,
+        nextEnabled: false,
+      });
     }
   };
 
@@ -76,25 +125,27 @@ export default class App extends React.Component {
     this.xOffset = xOffset;
     this.yOffset = yOffset;
   };
+  onTopUpdated = newTopOffset => {
+    this.topOffset = newTopOffset;
+  };
+  onBottomUpdated = newBottomOffset => {
+    this.bottomOffset = newBottomOffset;
+  };
 
   render() {
-    console.log('Root render', this.zoomLevel, this.xOffset, this.yOffset);
     return (
       <>
         {this.state.curState === 'IMAGE_UPLOAD' && (
-          <>
-            <p>This is a super simple face folding app!</p>
-            <p>To begin, upload an image!</p>
-          </>
+          <p>To begin, upload an image!</p>
         )}
         {this.state.curState === 'IMAGE_RESIZE' && (
-          <p>
-            Now resize the image so that the face you want to fold is big and
-            centered
-          </p>
+          <p>Now resize and center the face!</p>
         )}
         {this.state.curState === 'IMAGE_FOLDING' && (
-          <p>Now drag the two pieces together however you'd like</p>
+          <p>Now fold! (drag from top or bottom)</p>
+        )}
+        {this.state.curState === 'IMAGE_SAVING' && (
+          <p>That's it! Right click or long press to save your image!</p>
         )}
         <canvas
           style={{
@@ -103,6 +154,7 @@ export default class App extends React.Component {
             margin: '10px',
             resize: 'both',
             overflow: 'hidden',
+            borderRadius: '6px',
           }}
           height="300"
           ref={this.canvasRef}
@@ -112,6 +164,7 @@ export default class App extends React.Component {
             display: 'flex',
             justifyContent: 'space-evenly',
             padding: '10px',
+            height: '70px',
           }}
         >
           {this.state.curState === 'IMAGE_UPLOAD' && (
@@ -136,19 +189,27 @@ export default class App extends React.Component {
               zoomLevel={this.zoomLevel}
               imgXOffset={this.xOffset}
               imgYOffset={this.yOffset}
+              onTopOffsetUpdated={this.onTopOffsetUpdated}
+              onBottomOffsetUpdated={this.onBottomOffsetUpdated}
             />
           )}
         </div>
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            width: '300px',
+          }}
+        >
           <button
-            style={buttonStyles}
+            style={buttonStyles(this.state.backEnabled)}
             disabled={!this.state.backEnabled}
             onClick={this.onBackClick}
           >
             Back
           </button>
           <button
-            style={buttonStyles}
+            style={buttonStyles(this.state.nextEnabled)}
             disabled={!this.state.nextEnabled}
             onClick={this.onNextClick}
           >

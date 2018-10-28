@@ -1,10 +1,21 @@
 import React from 'react';
 
-export default class ImageFolding extends React.Component {
+const buttonStyles = {
+  border: '2px solid gray',
+  color: 'gray',
+  backgroundColor: 'white',
+  padding: '8px 10px',
+  borderRadius: '8px',
+  fontSize: '20px',
+  fontWeight: 'bold',
+  outline: 'none',
+  userSelect: 'none',
+};
+
+export default class ImageSaving extends React.Component {
   static defaultProps = {
     canvasRef: null,
     resizedImageData: null,
-    onFoldedImageUpdated: () => {},
   };
 
   // We stare these as instance properties rather than on state because we
@@ -27,17 +38,6 @@ export default class ImageFolding extends React.Component {
     canvas.addEventListener('touchstart', this.startDrag);
     canvas.addEventListener('touchend', this.endDrag);
     canvas.addEventListener('touchmove', this.updateDrag);
-  }
-
-  componentWillUnmount() {
-    const canvas = this.props.canvasRef.current;
-    canvas.removeEventListener('mousedown', this.startDrag);
-    canvas.removeEventListener('mousemove', this.updateDrag);
-    canvas.removeEventListener('mouseup', this.endDrag);
-    canvas.removeEventListener('mouseleave', this.endDrag);
-    canvas.removeEventListener('touchstart', this.startDrag);
-    canvas.removeEventListener('touchend', this.endDrag);
-    canvas.removeEventListener('touchmove', this.updateDrag);
   }
 
   updateCanvas = () => {
