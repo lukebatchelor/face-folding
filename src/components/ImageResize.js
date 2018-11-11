@@ -18,6 +18,7 @@ function getDefaultOffsetsAndZoomLevel({
   const xOffset = (canvasWidth - newImgWidth) / 2;
   const yOffset = (canvasHeight - newImgHeight) / 2;
 
+  console.log(xOffset, yOffset, maxScaling);
   return {
     xOffset,
     yOffset,
@@ -140,7 +141,15 @@ export default class ImageResize extends React.Component {
 
   onZoomChange = e => {
     const newValue = e.target.value;
+    const zoomLevelDiff = this.zoomLevel - newValue;
     this.zoomLevel = newValue;
+    const { height: imgHeight, width: imgWidth } = this.props.loadedImage;
+    this.imgXOffset += (imgWidth / 2) * zoomLevelDiff;
+    this.imgYOffset += (imgHeight / 2) * zoomLevelDiff;
+    this.props.onOffsetUpdated({
+      xOffset: this.imgXOffset,
+      yOffset: this.imgYOffset,
+    });
     this.props.onZoomUpdated(newValue);
     this.updateCanvas();
   };
